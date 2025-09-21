@@ -6,7 +6,7 @@ ENV TZ=Asia/Shanghai
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
-    software-properties-common \
+    # software-properties-common \
     curl \
     zip \
     unzip \
@@ -48,18 +48,31 @@ RUN apt-get update && apt-get install -y \
     libxslt1-dev \
     libffi-dev \
     libsqlite3-dev \
+    libpq-dev \
     fonts-dejavu-core \
     fontconfig \
     && rm -rf /var/lib/apt/lists/*
 
-RUN docker-php-ext-configure gd \
-        --with-freetype \
-        --with-jpeg \
-        --with-webp \
+
+# 将所有 PHP 扩展相关的操作合并到一个 RUN 指令中
+RUN set -ex \
+# 1. 安装稳定且可以通过 pecl 安装的扩展
+    && pecl install imagick redis \
+    # 2. 从源码编译安装 vips 扩展
+    && git clone https://github.com/libvips/php-vips-ext.git \
+    && cd php-vips-ext \
+    && phpize \
+    && ./configure \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -rf php-vips-ext \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-configure intl \
-    && docker-php-ext-install \
+    && docker-php-ext-install -j$(nproc) \
         pdo_mysql \
         pdo_sqlite \
+        pdo_pgsql \
         mysqli \
         gd \
         zip \
@@ -70,10 +83,9 @@ RUN docker-php-ext-configure gd \
         xsl \
         pcntl \
         ftp \
-        ffi
-
-RUN pecl install imagick redis vips \
-    && docker-php-ext-enable imagick redis vips
+        ffi \
+    && docker-php-ext-enable imagick redis vips \
+    && rm -rf /tmp/pear
 
 COPY docker/config/php.ini /usr/local/etc/php/conf.d/custom.ini
 COPY docker/config/www.conf /usr/local/etc/php-fpm.d/www.conf
@@ -104,4 +116,4 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:80/ || exit 1
 
-ENTRYPOINT ["/entrypoint.sh"] 
+ENTRYPOINT ["/entrypoint.sh"]
