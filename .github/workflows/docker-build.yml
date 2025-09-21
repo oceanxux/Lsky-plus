@@ -1,51 +1,57 @@
-name: Build and Push Multi-platform Docker Image
+name: Build and Push Multi-Platform Docker Image
 
 on:
+  # 1. 当有代码推送到 main 分支时，自动触发
   push:
-    branches: ["main"]      # 监听 main 分支
-  workflow_dispatch:        # 支持手动触发
+    branches: ["main"]
+  
+  # 2. 允许在 GitHub Actions 页面手动触发此工作流
+  workflow_dispatch:
 
 jobs:
   build-and-push:
+    # 使用最新的 Ubuntu 系统作为构建环境
     runs-on: ubuntu-latest
+
     steps:
-      # 1. 拉取代码
-      - name: Checkout code
+      # 步骤 1: 拉取最新的代码
+      - name: Checkout repository code
         uses: actions/checkout@v4
 
-      # ==========================================================
-      # [新增步骤 1] 设置 QEMU 模拟器
-      # 这是让 AMD64 架构的 Runner 能够构建 ARM64 镜像的关键
+      # 步骤 2: 设置 QEMU 模拟器，这是实现多平台构建的关键
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # [新增步骤 2] 设置 Docker Buildx
-      # 这是创建和使用多平台构建器的关键
+      # 步骤 3: 设置 Docker Buildx，使用更高级的构建引擎
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      # ==========================================================
 
-      # 2. 登录 Docker Hub
+      # 步骤 4: 登录到 Docker Hub
+      # 使用存储在 GitHub Secrets 中的用户名和 Access Token
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 3. 获取短 commit hash
-      - name: Get Commit Hash
-        id: vars
-        run: echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      # 步骤 5: 提取元数据（如标签和镜像名称）
+      # 这是 docker/metadata-action 的一个强大功能，可以自动生成标签
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/lsky-pro  # <== 在这里修改你的镜像名称
+          tags: |
+            type=sha,prefix=,format=short  # 使用短 commit hash 作为标签, e.g., :a1b2c3d
+            type=raw,value=latest,enable={{is_default_branch}} # 只有在主分支上才打 latest 标签
 
-      # 4. 构建并推送到 Docker Hub
+      # 步骤 6: 构建并推送多平台镜像
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./docker/Dockerfile
-          push: true
-          # [修改] 增加 platforms 参数，指定要构建的平台
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/lsky-plus:${{ steps.vars.outputs.COMMIT_HASH }}
-            ${{ secrets.DOCKER_USERNAME }}/lsky-plus:latest
+          context: .  # 使用当前目录作为构建上下文
+          file: ./docker/Dockerfile  # <== 在这里确认你的 Dockerfile 路径
+          platforms: linux/amd64,linux/arm64  # 要构建的平台架构
+          push: true  # 确认执行推送操作
+          tags: ${{ steps.meta.outputs.tags }}      # 使用上一步生成的标签
+          labels: ${{ steps.meta.outputs.labels }}  # 自动添加镜像元数据标签
