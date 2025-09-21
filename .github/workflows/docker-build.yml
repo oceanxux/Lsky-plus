@@ -16,7 +16,8 @@ jobs:
 
       # 2️⃣ 登出 Docker（防止缓存）
       - name: Logout Docker
-        run: docker logout
+        run: echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}"
+#        run: docker logout
 
       # 3️⃣ 登录 Docker Hub
       - name: Login to Docker Hub
