@@ -40,7 +40,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKER_USERNAME }}/lsky-pro  # <== 在这里修改你的镜像名称
+          images: ${{ secrets.DOCKER_USERNAME }}/lsky-plus  # <== 在这里修改你的镜像名称
           tags: |
             type=sha,prefix=,format=short  # 使用短 commit hash 作为标签, e.g., :a1b2c3d
             type=raw,value=latest,enable={{is_default_branch}} # 只有在主分支上才打 latest 标签
