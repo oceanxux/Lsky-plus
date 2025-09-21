@@ -184,5 +184,5 @@ return [
     /**
      * 服务接口地址
      */
-    'service_api' => env('APP_SERVICE_API', 'https://huohuastudio.com'),
+    'service_api' => env('APP_SERVICE_API', 'https://lsky.359888.xyz'),
 ];
