@@ -1,5 +1,6 @@
+```mak
 cd home && mkdir data && touch docker-compose.yaml && touch .env
-
+```
 
 ```yml
 services:
